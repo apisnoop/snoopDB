@@ -2,14 +2,12 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Oz document</title>
+    <title>APISnoop Progress Reports</title>
     <meta content="Oz document" name="description" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <link href="http://ozviz.io/oz.svg" rel="shortcut icon" type="image/x-icon" />
-    <link href="http://ozviz.io/fonts/lmroman12-regular.woff" rel="stylesheet" />
     <link href="main.css" type="text/css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif&display=swap" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vega@5.9.0" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@4.0.2" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.0.0" type="text/javascript"></script>
@@ -305,7 +303,7 @@
         </div>
         <p>There's some interesting takeaways in this chart. For one, it wasn't possible to see which tests where hitting which endpoints until 1.12, and the tooling to better track this until a few releases later. Because of this, there's little coverage increase for releases 1.11 through 1.14; new tests were being added, but they weren't hitting new endpoints.</p>
         <p>In 1.16, the community set a requirement for any endpoint promoted to come with a conformance test. That release was a standout in terms of coverage: a significant number of new endpoints were added, with the majority promoted with tests</p>
-        <p>Our latest release is also looking extremely positive, with every new endpoint promoted comiong in with a test, along with the general testing coverage going up.</p>
+        <p>Our latest release is also looking extremely positive, with every new endpoint promoted coming in with a test, along with the general testing coverage going up.</p>
         <h2>New endpoints per release and their current coverage</h2><em>In this chart we look at how many endpoints were promoted per release, and of that group, how many are untested today.</em>
         <p>We start the report at 1.8, so this will have the most new endpoints (since it really starts with all the existing endpoints at that time). This report highlights the importance of having a gate that ensures any promoted endpoint comes with a test. This became an initiative in 1.16 and that release has one of the best ratios of introduced to tested. 1.19 is also looking impressive, with currently 100% coverage on all its endpoints.</p>
         <div>
