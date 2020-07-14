@@ -1,5 +1,3 @@
-set role dba;
-DROP FUNCTION IF EXISTS load_tests;
 CREATE OR REPLACE FUNCTION load_tests()
 RETURNS text AS $$
 from string import Template
@@ -31,5 +29,6 @@ try:
     return 'conformance.yaml loaded into test!'
 except Exception as e:
     return 'error occured: ', e
-$$ LANGUAGE plpython3u ;
-reset role;
+$$ LANGUAGE plpython3u;
+
+comment on function load_tests is 'loads latest conformance.yaml into test table';

@@ -1,4 +1,3 @@
-set role dba;
 CREATE OR REPLACE FUNCTION load_audit_events(
   custom_bucket text default null,
   custom_job text default null)
@@ -11,17 +10,18 @@ CREATE OR REPLACE FUNCTION load_audit_events(
   _, metadata, _ = fetch_swagger(bucket, job)
   release_date = int(metadata['timestamp'])
   release = metadata["version"].split('-')[0].replace('v','')
+  num = release.replace('.','')
 
   sql = Template("""
-    CREATE TEMPORARY TABLE audit_event_import(data jsonb not null) ;
-    COPY audit_event_import(data)
+    CREATE TEMPORARY TABLE audit_event_import${job}(data jsonb not null) ;
+    COPY audit_event_import${job}(data)
     FROM '${audit_logfile}' (DELIMITER e'\x02', FORMAT 'csv', QUOTE e'\x01');
 
     INSERT INTO audit_event(release, release_date,
                             audit_id, endpoint,
                             useragent, test,
                             test_hit, conf_test_hit,
-                            data)
+                            data, source)
 
     SELECT trim(leading 'v' from '${release}') as release,
             '${release_date}',
@@ -35,12 +35,15 @@ CREATE OR REPLACE FUNCTION load_audit_events(
             END as test,
             ((raw.data ->> 'userAgent') like 'e2e.test%') as test_hit,
             ((raw.data ->> 'userAgent') like '%[Conformance]%') as conf_test_hit,
-            raw.data
-      FROM audit_event_import raw;
+            raw.data,
+            'https://prow.k8s.io/view/gcs/kubernetes-jenkins/logs/${bucket}/${job}' as source
+      FROM audit_event_import${job} raw;
             """).substitute(
                 audit_logfile = auditlog_file,
                 release = release,
-                release_date = release_date,
+                bucket = bucket,
+                job = job,
+                release_date = release_date
             )
   try:
       plpy.execute(sql)
@@ -52,3 +55,5 @@ CREATE OR REPLACE FUNCTION load_audit_events(
       return "something unknown went wrong"
   $$ LANGUAGE plpython3u ;
   reset role;
+
+comment on function load_audit_events is 'loads all audit events from given bucket, job.  if neither given, loads latest successful job from sig-release blocking. if just bucket given, loads latest successful job for that bucket.';
