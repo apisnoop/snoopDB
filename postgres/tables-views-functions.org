@@ -887,7 +887,7 @@ create or replace view conformance.coverage_per_release as
    #+end_src
 
 * Select Scripts
-  These aren't static relations in the db, but scripts we run as part of the db's initialization
+These aren't static relations in the db, but scripts we run as part of the db's initialization
 ** Load all our open_api
    :PROPERTIES:
    :header-args: :tangle ./initdb/08_load_all_open_api.sql
@@ -1004,6 +1004,39 @@ create or replace view conformance.coverage_per_release as
  #+end_src
 ** output new endpoints
 
+** output untested endpoints
+   :PROPERTIES:
+   :header-args: :tangle ./initdb/25_output_untested_endpoints.sql
+   :END:
+  #+BEGIN_SRC sql-mode
+begin;
+
+select 'writing untested endpoints for ' || release || ' to /tmp/untested-endpoints.txt' as "build log"
+from open_api
+order by release::semver desc
+limit 1;
+
+\t
+\a
+\o '/tmp/untested-endpoints.txt'
+
+  with latest_release as (
+  select release::semver as release
+    from open_api
+   order by release::semver desc
+   limit 1
+  )
+
+  select endpoint
+    from conformance.new_endpoint ne
+           join latest_release on ne.release::semver = latest_release.release
+where tested is false;
+
+\o
+\a
+\t
+commit;
+  #+END_SRC
 * Scratch
 #+begin_src sql-mode
 select * from generate_latest_coverage_json();
@@ -1042,6 +1075,40 @@ select * from generate_latest_coverage_json();
 
 #+end_src
 
-#+BEGIN_SRC sql-mode
-select count(*) from conformance.eligible_endpoint;
+#+BEGIN_SRC sql-mode :results replace
+  begin;
+  \t
+  \a
+  \o '../resources/untested-endpoints.txt'
+
+    with latest_release as (
+    select release::semver as release
+      from open_api
+     order by release::semver desc
+     limit 1
+    )
+
+    select endpoint
+      from conformance.new_endpoint ne
+             join latest_release on ne.release::semver = latest_release.release
+  where tested is false;
+
+  \o
+  \a
+  \t
+  commit;
 #+END_SRC
+
+#+RESULTS:
+#+BEGIN_SRC example
+BEGIN
+#+END_SRC
+
+#+BEGIN_SRC shell
+wc -l ../resources/untested-endpoints.txt
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_example
+0 ../resources/untested-endpoints.txt
+#+END_example
