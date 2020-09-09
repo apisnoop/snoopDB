@@ -13,7 +13,8 @@
            where path ~~ any('{"%volume%", "%storage%"}')
               or deprecated is true
               or k8s_kind = 'ComponentStatus'
-              or (k8s_kind = 'Node' and k8s_action = any('{"delete", "post"}'));
+              or (k8s_kind = 'Node' and k8s_action = any('{"delete", "post"}'))
+              or endpoint = any('{"getFlowcontrolApiserverAPIGroup", "createCoreV1NamespacedServiceAccountToken"}');
 
       comment on view conformance.eligible_endpoint is 'all current stable endpoints for which conformant tests could be written, following conformance guidelines';
 
