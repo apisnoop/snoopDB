@@ -627,7 +627,8 @@
            where path ~~ any('{"%volume%", "%storage%"}')
               or deprecated is true
               or k8s_kind = 'ComponentStatus'
-              or (k8s_kind = 'Node' and k8s_action = any('{"delete", "post"}'));
+              or (k8s_kind = 'Node' and k8s_action = any('{"delete", "post"}'))
+              or endpoint = any('{"getFlowcontrolApiserverAPIGroup", "createCoreV1NamespacedServiceAccountToken"}');
     #+end_src
 
     #+begin_src sql-mode
@@ -657,37 +658,57 @@ create or replace view conformance.ineligible_endpoint as
             limit 1
          )
     )
-        (
-          -- vendor specific features
-          select endpoint,
-                 'vendor specific feature' as reason,
-                 'path includes "volume" or "storage"' as "sql logic",
-             'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L64' as link
-            from current_stable_endpoints
-           where path ~~ any('{"%volume%", "%storage%"}')
-        )
-        union
-        (
-          -- endpoint is pending deprecation
-          select endpoint,
-                 'pending deprecation' as reason,
-                 'kind equals ComponentStatus' as "sql logic",
-               'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L69' as link
-            from current_stable_endpoints
-           where k8s_kind = 'ComponentStatus'
-        )
-        union
-        (
-          -- Uses the kubelet api
-          select endpoint,
-                 'uses kubelet api' as reason,
-                 'kind equals Node and action equals delete or post' as "sql logic",
-               'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L36' as link
-            from current_stable_endpoints
-           where k8s_kind = 'Node'
-             and k8s_action = any('{"delete", "post"}')
-        )
-        order by reason;
+    (
+        -- vendor specific features
+        select endpoint,
+                'vendor specific feature' as reason,
+                'path includes "volume" or "storage"' as "sql logic",
+            'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L64' as link
+        from current_stable_endpoints
+        where path ~~ any('{"%volume%", "%storage%"}')
+    )
+    union
+    (
+        -- endpoint is pending deprecation
+        select endpoint,
+                'pending deprecation' as reason,
+                'kind equals ComponentStatus' as "sql logic",
+            'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L69' as link
+        from current_stable_endpoints
+        where k8s_kind = 'ComponentStatus'
+    )
+    union
+    (
+        -- Uses the kubelet api
+        select endpoint,
+                'uses kubelet api' as reason,
+                'kind equals Node and action equals delete or post' as "sql logic",
+            'https://github.com/kubernetes/community/blame/master/contributors/devel/sig-architecture/conformance-tests.md#L36' as link
+        from current_stable_endpoints
+        where k8s_kind = 'Node'
+            and k8s_action = any('{"delete", "post"}')
+    )
+    union
+    (
+    -- Optional feature
+    select endpoint,
+    'optional feature' as reason,
+    'endpoint = ' || endpoint as "sql logic",
+    'https://github.com/kubernetes/kubernetes/issues/80770' as link
+    from current_stable_endpoints
+    where endpoint = 'createCoreV1NamespacedServiceAccountToken'
+    )
+    union
+    (
+    -- Dependent on Alpha Feature
+    select endpoint,
+    'depends on alpha feature' as reason,
+    'endpoint = ' || endpoint as "sql logic",
+    'https://github.com/kubernetes/enhancements/blob/f16c4c7f1c9e28a3cc4bb4d0e6503efea2ae7987/keps/sig-api-machinery/20190228-priority-and-fairness.md' as link
+    from current_stable_endpoints
+    where endpoint = 'getFlowcontrolApiserverAPIGroup'
+    )
+    order by reason;
   #+end_src
 
   #+begin_src sql-mode
@@ -887,7 +908,7 @@ create or replace view conformance.coverage_per_release as
    #+end_src
 
 * Select Scripts
-  These aren't static relations in the db, but scripts we run as part of the db's initialization
+These aren't static relations in the db, but scripts we run as part of the db's initialization
 ** Load all our open_api
    :PROPERTIES:
    :header-args: :tangle ./initdb/08_load_all_open_api.sql
@@ -1004,44 +1025,37 @@ create or replace view conformance.coverage_per_release as
  #+end_src
 ** output new endpoints
 
+** output untested endpoints
+   :PROPERTIES:
+   :header-args: :tangle ./initdb/25_output_untested_endpoints.sql
+   :END:
+  #+BEGIN_SRC sql-mode
+begin;
+
+select 'writing untested endpoints for ' || release || ' to /tmp/untested-endpoints.txt' as "build log"
+from open_api
+order by release::semver desc
+limit 1;
+
+\t
+\a
+\o '/tmp/untested-endpoints.txt'
+
+  with latest_release as (
+  select release::semver as release
+    from open_api
+   order by release::semver desc
+   limit 1
+  )
+
+  select endpoint
+    from conformance.new_endpoint ne
+           join latest_release on ne.release::semver = latest_release.release
+where tested is false;
+
+\o
+\a
+\t
+commit;
+  #+END_SRC
 * Scratch
-#+begin_src sql-mode
-select * from generate_latest_coverage_json();
-#+end_src
-
-   #+begin_src sql-mode :results replace
-     create or replace view new_endpoints as
-     select first_release as release, array_agg(endpoint) as endpoints from (
-       select distinct endpoint,
-                       (array_agg(oa.release order by oa.release::semver))[1] as first_release
-         from open_api oa
-        group by endpoint, level, k8s_kind, k8s_action
-     ) a
-      group by first_release
-      order by first_release::semver;
-   #+end_src
-
-   #+RESULTS:
-   #+begin_SRC example
-   CREATE VIEW
-   #+end_SRC
-
-#+begin_src sql-mode
-  begin;
-  \t
-    \a
-    \o ../resources/coverage/new-endpoints.json
-    select json_agg(ne) from
-    (
-      select * from new_endpoints
-      ) ne;
-    \o
-    \a
-    \t
-    commit;
-
-#+end_src
-
-#+BEGIN_SRC sql-mode
-select count(*) from conformance.eligible_endpoint;
-#+END_SRC
