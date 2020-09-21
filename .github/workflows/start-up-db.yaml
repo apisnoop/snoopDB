@@ -1,6 +1,11 @@
 name: Start Up DB
 on: push
 jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps: 
+      - shell: bash
+        run: echo "hello friend"
   postgres-db:
     needs: hello
     runs-on: ubuntu-latest
