@@ -32,6 +32,9 @@ jobs:
       - name: ensure we are in right folder 1
         shell: bash
         run: pwd
+      - name: what is here?
+        shell: bash
+        run: ls
       - name: Navigate to node folder
         shell: bash
         run: cd js
