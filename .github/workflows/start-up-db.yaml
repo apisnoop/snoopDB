@@ -24,6 +24,9 @@ jobs:
     steps:
       - name: checkout repository code
         uses: actions/checkout@v2
-      - name: check for psql
+      - name: check for tables
         shell: bash
-        run: "psql -U postgres -d postgres -h localhost -c '\\d+'"
+        run: "psql -c '\\d+'"
+        env:
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
