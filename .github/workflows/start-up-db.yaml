@@ -26,4 +26,4 @@ jobs:
         uses: actions/checkout@v2
       - name: check for psql
         shell: bash
-        run: "psql -U postgres -d postgres -h localhost -c '\d+'"
+        run: "psql -U postgres -d postgres -h localhost -c '\\d+'"
